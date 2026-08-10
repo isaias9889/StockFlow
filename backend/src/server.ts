@@ -46,7 +46,19 @@ const productos = [
 app.get("/api/productos", (req, res) => {
   res.json(productos);
 });
+app.get("/api/productos/:id", (req, res) => {
+  const id = Number(req.params.id);
 
+  const producto = productos.find((producto) => producto.id === id);
+
+  if (!producto) {
+    return res.status(404).json({
+      message: "Producto no encontrado"
+    });
+  }
+
+  res.json(producto);
+});
 app.listen(PORT, () => {
   console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
 });
