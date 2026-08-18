@@ -34,12 +34,6 @@ export async function obtenerProductoPorId(
 ) {
   const id = Number(req.params.id);
 
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({
-      message: "El ID debe ser un número válido"
-    });
-  }
-
   try {
     const [rows] = await pool.execute<ProductoRow[]>(
       "SELECT * FROM productos WHERE id = ?",
@@ -67,37 +61,6 @@ export async function crearProducto(
   res: Response
 ) {
   const { nombre, precio, stock } = req.body;
-
-  if (typeof nombre !== "string" || nombre.trim() === "") {
-    return res.status(400).json({
-      message: "El nombre es obligatorio"
-    });
-  }
-
-  if (typeof precio !== "number") {
-    return res.status(400).json({
-      message: "El precio debe ser un número"
-    });
-  }
-
-  if (precio < 0) {
-    return res.status(400).json({
-      message: "El precio no puede ser negativo"
-    });
-  }
-
-  if (typeof stock !== "number") {
-    return res.status(400).json({
-      message: "El stock debe ser un número"
-    });
-  }
-
-  if (stock < 0) {
-    return res.status(400).json({
-      message: "El stock no puede ser negativo"
-    });
-  }
-
   try {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO productos (nombre, precio, stock)
@@ -126,43 +89,6 @@ export async function actualizarProducto(
 ) {
   const id = Number(req.params.id);
   const { nombre, precio, stock } = req.body;
-
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({
-      message: "El ID debe ser un número válido"
-    });
-  }
-
-  if (typeof nombre !== "string" || nombre.trim() === "") {
-    return res.status(400).json({
-      message: "El nombre es obligatorio"
-    });
-  }
-
-  if (typeof precio !== "number") {
-    return res.status(400).json({
-      message: "El precio debe ser un número"
-    });
-  }
-
-  if (precio < 0) {
-    return res.status(400).json({
-      message: "El precio no puede ser negativo"
-    });
-  }
-
-  if (typeof stock !== "number") {
-    return res.status(400).json({
-      message: "El stock debe ser un número"
-    });
-  }
-
-  if (stock < 0) {
-    return res.status(400).json({
-      message: "El stock no puede ser negativo"
-    });
-  }
-
   try {
     const [result] = await pool.execute<ResultSetHeader>(
       `UPDATE productos
@@ -197,13 +123,6 @@ export async function eliminarProducto(
   res: Response
 ) {
   const id = Number(req.params.id);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({
-      message: "El ID debe ser un número válido"
-    });
-  }
-
   try {
     const [result] = await pool.execute<ResultSetHeader>(
       "DELETE FROM productos WHERE id = ?",
