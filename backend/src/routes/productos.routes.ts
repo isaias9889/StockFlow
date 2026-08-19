@@ -10,7 +10,8 @@ import {
 
 import {
   validarProducto,
-  validarId
+  validarId,
+  validarCategoriaExiste
 } from "../middlewares/productos.middleware";
 
 const router = Router();
@@ -18,9 +19,9 @@ const router = Router();
 router.get("/", obtenerProductos);
 router.get("/:id", validarId, obtenerProductoPorId);
 
-router.post("/", validarProducto, crearProducto);
+router.post("/", validarProducto, validarCategoriaExiste, crearProducto);
 
-router.put("/:id", validarId, validarProducto, actualizarProducto);
+router.put("/:id", validarId, validarProducto, validarCategoriaExiste, actualizarProducto);
 
 router.delete("/:id", validarId, eliminarProducto);
 

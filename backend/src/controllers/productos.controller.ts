@@ -6,6 +6,8 @@ interface ProductoRow extends RowDataPacket {
   nombre: string;
   precio: string;
   stock: number;
+  categoria_id: number | null;
+  categoria: string | null;
 }
 
 export async function obtenerProductos(
@@ -13,10 +15,19 @@ export async function obtenerProductos(
   res: Response
 ) {
   try {
-    const [rows] = await pool.query(
-      "SELECT * FROM productos"
-    );
-
+    const [rows] = await pool.query(`
+  SELECT
+    productos.id,
+    productos.nombre,
+    productos.precio,
+    productos.stock,
+    productos.categoria_id,
+    categorias.nombre AS categoria
+  FROM productos
+  LEFT JOIN categorias
+    ON productos.categoria_id = categorias.id
+    
+`);
     return res.status(200).json(rows);
 
   } catch (error) {
@@ -35,11 +46,20 @@ export async function obtenerProductoPorId(
   const id = Number(req.params.id);
 
   try {
-    const [rows] = await pool.execute<ProductoRow[]>(
-      "SELECT * FROM productos WHERE id = ?",
-      [id]
-    );
-
+  const [rows] = await pool.execute<ProductoRow[]>(
+  `SELECT
+    productos.id,
+    productos.nombre,
+    productos.precio,
+    productos.stock,
+    productos.categoria_id,
+    categorias.nombre AS categoria
+   FROM productos
+   LEFT JOIN categorias
+     ON productos.categoria_id = categorias.id
+   WHERE productos.id = ?`,
+  [id]
+);
     if (rows.length === 0) {
       return res.status(404).json({
         message: "Producto no encontrado"
@@ -60,19 +80,20 @@ export async function crearProducto(
   req: Request,
   res: Response
 ) {
-  const { nombre, precio, stock } = req.body;
+  const { nombre, precio, stock, categoria_id } = req.body;
   try {
-    const [result] = await pool.execute<ResultSetHeader>(
-      `INSERT INTO productos (nombre, precio, stock)
-       VALUES (?, ?, ?)`,
-      [nombre.trim(), precio, stock]
-    );
+   const [result] = await pool.execute<ResultSetHeader>(
+  `INSERT INTO productos (nombre, precio, stock, categoria_id)
+   VALUES (?, ?, ?, ?)`,
+  [nombre.trim(), precio, stock, categoria_id]
+);
 
     return res.status(201).json({
       id: result.insertId,
       nombre: nombre.trim(),
       precio,
-      stock
+      stock,
+      categoria_id
     });
 
   } catch (error) {
@@ -88,13 +109,13 @@ export async function actualizarProducto(
   res: Response
 ) {
   const id = Number(req.params.id);
-  const { nombre, precio, stock } = req.body;
+const { nombre, precio, stock, categoria_id } = req.body;
   try {
     const [result] = await pool.execute<ResultSetHeader>(
       `UPDATE productos
-       SET nombre = ?, precio = ?, stock = ?
+       SET nombre = ?, precio = ?, stock = ?, categoria_id = ?
        WHERE id = ?`,
-      [nombre.trim(), precio, stock, id]
+      [nombre.trim(), precio, stock, categoria_id, id]
     );
 
     if (result.affectedRows === 0) {
@@ -107,7 +128,8 @@ export async function actualizarProducto(
       id,
       nombre: nombre.trim(),
       precio,
-      stock
+      stock,
+      categoria_id
     });
 
   } catch (error) {
