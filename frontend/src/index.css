@@ -253,3 +253,82 @@ body {
 
   font-size: 14px;
 }
+.historial-contenedor {
+  margin-top: 35px;
+}
+
+.historial-contenedor h2 {
+  margin-bottom: 15px;
+}
+
+.tabla-movimientos {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-movimientos th,
+.tabla-movimientos td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tabla-movimientos th {
+  background-color: #f8fafc;
+  color: #374151;
+}
+.form-movimiento {
+  margin-top: 25px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background-color: #f8fafc;
+}
+
+.form-movimiento input {
+  padding: 10px;
+  margin-right: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+
+.btn-entrada,
+.btn-salida {
+  border: none;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 6px;
+}
+
+.btn-entrada {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.btn-salida {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+.btn-registrar-movimiento {
+  border: none;
+  padding: 10px 14px;
+  margin-right: 10px;
+  border-radius: 6px;
+  background-color: #16a34a;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+}
+.filtros-movimientos {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.filtros-movimientos select {
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: white;
+}

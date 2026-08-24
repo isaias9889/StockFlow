@@ -1,5 +1,6 @@
 import express from "express";
 import { probarConexion } from "./database";
+import movimientosRoutes from "./routes/movimientos.routes";
 import productosRoutes from "./routes/productos.routes";
 import categoriasRoutes from "./routes/categorias.routes";
 import cors from "cors";
@@ -9,7 +10,7 @@ app.use(express.json());
 app.use("/api/productos", productosRoutes);
 app.use("/api/categorias", categoriasRoutes);
 const PORT = 3000;
-
+app.use("/api/movimientos", movimientosRoutes);
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",

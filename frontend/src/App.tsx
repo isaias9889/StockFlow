@@ -13,6 +13,17 @@ interface Categoria {
   id: number;
   nombre: string;
 }
+interface Movimiento {
+  id: number;
+  producto_id: number;
+  producto: string;
+  tipo: "ENTRADA" | "SALIDA";
+  cantidad: number;
+  stock_anterior: number;
+  stock_nuevo: number;
+  motivo: string | null;
+  fecha: string;
+}
 
 function App() {
   // =========================
@@ -20,7 +31,19 @@ function App() {
   // =========================
 
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [mostrarMovimiento, setMostrarMovimiento] = useState(false);
+const [tipoFiltroMovimiento, setTipoFiltroMovimiento] = useState("");
+const [productoFiltroMovimiento, setProductoFiltroMovimiento] = useState("");
+const [productoMovimiento, setProductoMovimiento] =
+  useState<Producto | null>(null);
+
+const [tipoMovimiento, setTipoMovimiento] =
+  useState<"ENTRADA" | "SALIDA">("ENTRADA");
+
+const [cantidadMovimiento, setCantidadMovimiento] = useState("");
+const [motivoMovimiento, setMotivoMovimiento] = useState("");
 
   // =========================
   // FORMULARIO
@@ -98,6 +121,23 @@ function App() {
       console.error("Error cargando categorías:", error);
     }
   };
+   const cargarMovimientos = async () => {
+  try {
+    const respuesta = await fetch(
+      "http://localhost:3000/api/movimientos"
+    );
+
+    if (!respuesta.ok) {
+      throw new Error("No se pudieron cargar los movimientos");
+    }
+
+    const datos = await respuesta.json();
+
+    setMovimientos(datos);
+  } catch (error) {
+    console.error("Error cargando movimientos:", error);
+  }
+};
 
   // =========================
   // CARGAR DATOS AL INICIAR
@@ -106,6 +146,7 @@ function App() {
   useEffect(() => {
     cargarProductos();
     cargarCategorias();
+    cargarMovimientos();
   }, []);
 
   // =========================
@@ -270,7 +311,84 @@ function App() {
       alert("Ocurrió un error al eliminar el producto");
     }
   };
+const abrirMovimiento = (
+  producto: Producto,
+  tipo: "ENTRADA" | "SALIDA"
+) => {
+  setProductoMovimiento(producto);
+  setTipoMovimiento(tipo);
 
+  setCantidadMovimiento("");
+  setMotivoMovimiento("");
+
+  setMostrarMovimiento(true);
+};
+const registrarMovimiento = async () => {
+  if (!productoMovimiento) {
+    return;
+  }
+
+  if (
+    cantidadMovimiento === "" ||
+    Number(cantidadMovimiento) <= 0
+  ) {
+    alert("Ingresa una cantidad válida");
+    return;
+  }
+
+  const datosMovimiento = {
+    producto_id: productoMovimiento.id,
+    tipo: tipoMovimiento,
+    cantidad: Number(cantidadMovimiento),
+    motivo: motivoMovimiento,
+  };
+
+  try {
+    const respuesta = await fetch(
+      "http://localhost:3000/api/movimientos",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify(datosMovimiento),
+      }
+    );
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+      alert(datos.mensaje);
+      return;
+    }
+
+    await cargarProductos();
+    await cargarMovimientos();
+
+    setCantidadMovimiento("");
+    setMotivoMovimiento("");
+    setProductoMovimiento(null);
+    setMostrarMovimiento(false);
+
+  } catch (error) {
+    console.error(error);
+
+    alert("Ocurrió un error al registrar el movimiento");
+  }
+};
+const movimientosFiltrados = movimientos.filter((movimiento) => {
+  const coincideTipo =
+    tipoFiltroMovimiento === "" ||
+    movimiento.tipo === tipoFiltroMovimiento;
+
+  const coincideProducto =
+    productoFiltroMovimiento === "" ||
+    movimiento.producto_id === Number(productoFiltroMovimiento);
+
+  return coincideTipo && coincideProducto;
+});
   return (
     <div className="stockflow-container">
 
@@ -513,6 +631,23 @@ function App() {
                 </td>
 
                 <td>
+                  <button
+  className="btn-entrada"
+  onClick={() =>
+    abrirMovimiento(producto, "ENTRADA")
+  }
+>
+  + Entrada
+</button>
+
+<button
+  className="btn-salida"
+  onClick={() =>
+    abrirMovimiento(producto, "SALIDA")
+  }
+>
+  - Salida
+</button>
 
                   <button
                     className="btn-editar"
@@ -541,14 +676,161 @@ function App() {
           </tbody>
 
         </table>
-
+        
         {/* MENSAJE SI NO HAY RESULTADOS */}
 
         {productosFiltrados.length === 0 && (
-          <p>
-            No se encontraron productos.
-          </p>
+          <p>No se encontraron productos.</p>
         )}
+
+      </div>
+{mostrarMovimiento && productoMovimiento && (
+
+  <div className="form-movimiento">
+
+    <h2>
+      {tipoMovimiento === "ENTRADA"
+        ? "Registrar entrada"
+        : "Registrar salida"}
+    </h2>
+
+    <p>
+      Producto: <strong>{productoMovimiento.nombre}</strong>
+    </p>
+
+    <p>
+      Stock actual: <strong>{productoMovimiento.stock}</strong>
+    </p>
+
+    <input
+      type="number"
+      placeholder="Cantidad"
+      value={cantidadMovimiento}
+      onChange={(e) =>
+        setCantidadMovimiento(e.target.value)
+      }
+      min="1"
+    />
+
+    <input
+      type="text"
+      placeholder="Motivo"
+      value={motivoMovimiento}
+      onChange={(e) =>
+        setMotivoMovimiento(e.target.value)
+      }
+    />
+<button
+  type="button"
+  className="btn-registrar-movimiento"
+  onClick={registrarMovimiento}
+>
+  Registrar movimiento
+</button>
+    <button
+      type="button"
+      onClick={() => setMostrarMovimiento(false)}
+    >
+      Cancelar
+    </button>
+
+  </div>
+
+)}
+      {/* =========================
+          HISTORIAL DE MOVIMIENTOS
+      ========================== */}
+
+      <div className="historial-contenedor">
+
+        <h2>Historial de movimientos</h2>
+        <div className="filtros-movimientos">
+
+  <select
+    value={tipoFiltroMovimiento}
+    onChange={(e) =>
+      setTipoFiltroMovimiento(e.target.value)
+    }
+  >
+    <option value="">
+      Todos los tipos
+    </option>
+
+    <option value="ENTRADA">
+      Entradas
+    </option>
+
+    <option value="SALIDA">
+      Salidas
+    </option>
+  </select>
+
+  <select
+    value={productoFiltroMovimiento}
+    onChange={(e) =>
+      setProductoFiltroMovimiento(e.target.value)
+    }
+  >
+    <option value="">
+      Todos los productos
+    </option>
+
+    {productos.map((producto) => (
+      <option
+        key={producto.id}
+        value={producto.id}
+      >
+        {producto.nombre}
+      </option>
+    ))}
+
+  </select>
+
+</div>
+
+        <table className="tabla-movimientos">
+
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Tipo</th>
+              <th>Cantidad</th>
+              <th>Stock anterior</th>
+              <th>Stock nuevo</th>
+              <th>Motivo</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            {movimientosFiltrados.map((movimiento) => (
+
+              <tr key={movimiento.id}>
+
+                <td>{movimiento.producto}</td>
+
+                <td>{movimiento.tipo}</td>
+
+                <td>{movimiento.cantidad}</td>
+
+                <td>{movimiento.stock_anterior}</td>
+
+                <td>{movimiento.stock_nuevo}</td>
+
+                <td>{movimiento.motivo}</td>
+
+                <td>
+                  {new Date(movimiento.fecha).toLocaleString()}
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
 
       </div>
 
