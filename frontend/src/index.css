@@ -332,3 +332,49 @@ body {
   border-radius: 6px;
   background-color: white;
 }
+.categorias-contenedor {
+  margin-top: 35px;
+}
+
+.categorias-contenedor h2 {
+  margin-bottom: 15px;
+}
+
+.tabla-categorias {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-categorias th,
+.tabla-categorias td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tabla-categorias th {
+  background-color: #f8fafc;
+  color: #374151;
+}
+.form-categoria {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.form-categoria input {
+  flex: 1;
+  max-width: 350px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+
+.btn-guardar-categoria {
+  border: none;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background-color: #2563eb;
+  color: white;
+  cursor: pointer;
+}

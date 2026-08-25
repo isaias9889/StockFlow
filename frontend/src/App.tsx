@@ -38,6 +38,9 @@ const [tipoFiltroMovimiento, setTipoFiltroMovimiento] = useState("");
 const [productoFiltroMovimiento, setProductoFiltroMovimiento] = useState("");
 const [productoMovimiento, setProductoMovimiento] =
   useState<Producto | null>(null);
+  const [nombreCategoria, setNombreCategoria] = useState("");
+  const [categoriaEditando, setCategoriaEditando] =
+  useState<number | null>(null);
 
 const [tipoMovimiento, setTipoMovimiento] =
   useState<"ENTRADA" | "SALIDA">("ENTRADA");
@@ -159,9 +162,7 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
     (producto) => producto.stock <= 10
   ).length;
 
-  const totalCategorias = new Set(
-    productos.map((producto) => producto.categoria)
-  ).size;
+const totalCategorias = categorias.length;
 
   // =========================
   // LIMPIAR FORMULARIO
@@ -389,6 +390,112 @@ const movimientosFiltrados = movimientos.filter((movimiento) => {
 
   return coincideTipo && coincideProducto;
 });
+const guardarCategoria = async () => {
+  if (nombreCategoria.trim() === "") {
+    alert("Ingresa un nombre para la categoría");
+    return;
+  }
+
+  try {
+    let respuesta;
+
+    // Si NO estamos editando → crear
+    if (categoriaEditando === null) {
+      respuesta = await fetch(
+        "http://localhost:3000/api/categorias",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            nombre: nombreCategoria,
+          }),
+        }
+      );
+    }
+
+    // Si estamos editando → actualizar
+    else {
+      respuesta = await fetch(
+        `http://localhost:3000/api/categorias/${categoriaEditando}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            nombre: nombreCategoria,
+          }),
+        }
+      );
+    }
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+      alert(datos.mensaje);
+      return;
+    }
+
+    // Volver a cargar las categorías
+    await cargarCategorias();
+
+    // También recargamos productos porque
+    // puede haber cambiado el nombre de su categoría
+    await cargarProductos();
+
+    // Limpiar
+    setNombreCategoria("");
+    setCategoriaEditando(null);
+
+  } catch (error) {
+    console.error(error);
+
+    alert("Ocurrió un error al guardar la categoría");
+  }
+};
+const editarCategoria = (categoria: Categoria) => {
+  setCategoriaEditando(categoria.id);
+  setNombreCategoria(categoria.nombre);
+};
+const eliminarCategoria = async (id: number) => {
+  const confirmar = window.confirm(
+    "¿Estás seguro de que quieres eliminar esta categoría?"
+  );
+
+  if (!confirmar) {
+    return;
+  }
+
+  try {
+    const respuesta = await fetch(
+      `http://localhost:3000/api/categorias/${id}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    const datos = await respuesta.json();
+
+   if (!respuesta.ok) {
+  alert(
+    datos.mensaje ||
+    datos.error ||
+    "No se pudo eliminar la categoría"
+  );
+  return;
+}
+
+    await cargarCategorias();
+    await cargarProductos();
+
+  } catch (error) {
+    console.error(error);
+
+    alert("Ocurrió un error al eliminar la categoría");
+  }
+};
   return (
     <div className="stockflow-container">
 
@@ -834,6 +941,90 @@ const movimientosFiltrados = movimientos.filter((movimiento) => {
 
       </div>
 
+<div className="categorias-contenedor">
+
+  <h2>Gestión de categorías</h2>
+  
+<div className="form-categoria">
+
+  <input
+    type="text"
+    placeholder="Nombre de la categoría"
+    value={nombreCategoria}
+    onChange={(e) =>
+      setNombreCategoria(e.target.value)
+    }
+  />
+
+  <button
+  type="button"
+  className="btn-guardar-categoria"
+  onClick={guardarCategoria}
+>
+  {categoriaEditando === null
+    ? "Guardar categoría"
+    : "Actualizar categoría"}
+</button>
+{categoriaEditando !== null && (
+  <button
+    type="button"
+    onClick={() => {
+      setCategoriaEditando(null);
+      setNombreCategoria("");
+    }}
+  >
+    Cancelar
+  </button>
+)}
+</div>
+  <table className="tabla-categorias">
+
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Categoría</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+
+      {categorias.map((categoria) => (
+
+        <tr key={categoria.id}>
+
+          <td>{categoria.id}</td>
+
+          <td>{categoria.nombre}</td>
+            <td>
+    <button
+      type="button"
+      className="btn-editar"
+      onClick={() => editarCategoria(categoria)}
+  
+    >
+      Editar
+    </button>
+
+  <button
+    type="button"
+    className="btn-eliminar"
+    onClick={() => eliminarCategoria(categoria.id)}
+  >
+    Eliminar
+  </button>
+  </td>
+
+        </tr>
+        
+
+      ))}
+
+    </tbody>
+
+  </table>
+
+</div>
     </div>
   );
 }
