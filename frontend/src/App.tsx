@@ -24,8 +24,23 @@ interface Movimiento {
   motivo: string | null;
   fecha: string;
 }
+interface Dashboard {
+  total_productos: number;
+  unidades_stock: number;
+  bajo_stock: number;
+  valor_inventario: number;
+  total_entradas: number;
+  total_salidas: number;
+  total_categorias: number;
+}
 
 function App() {
+
+// =========================
+// DASHBOARD
+// =========================
+
+  const [dashboard, setDashboard] = useState<Dashboard|null>(null);
   // =========================
   // PRODUCTOS Y CATEGORÍAS
   // =========================
@@ -80,6 +95,21 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
 
     return coincideBusqueda && coincideCategoria;
   });
+  // =========================
+  // CARGAR DASHBOARD
+  // =========================
+  
+  const cargarDashboard = async () => {
+    try {
+      const respuesta = await fetch(
+        "http://localhost:3000/api/dashboard"
+      );
+      const datos = await respuesta.json();
+      setDashboard(datos);
+    } catch (error) {
+      console.error("Error cargando dashboard:", error);
+    }
+  }
 
   // =========================
   // CARGAR PRODUCTOS
@@ -150,19 +180,15 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
     cargarProductos();
     cargarCategorias();
     cargarMovimientos();
+    cargarDashboard();
   }, []);
 
   // =========================
   // INDICADORES
   // =========================
 
-  const totalProductos = productos.length;
+ 
 
-  const productosBajoStock = productos.filter(
-    (producto) => producto.stock <= 10
-  ).length;
-
-const totalCategorias = categorias.length;
 
   // =========================
   // LIMPIAR FORMULARIO
@@ -261,7 +287,7 @@ const totalCategorias = categorias.length;
       }
 
       await cargarProductos();
-
+      await cargarDashboard();
       limpiarFormulario();
 
       setMostrarFormulario(false);
@@ -306,6 +332,7 @@ const totalCategorias = categorias.length;
           (producto) => producto.id !== id
         )
       );
+      await cargarDashboard();
     } catch (error) {
       console.error(error);
 
@@ -367,6 +394,7 @@ const registrarMovimiento = async () => {
 
     await cargarProductos();
     await cargarMovimientos();
+    await cargarDashboard();
 
     setCantidadMovimiento("");
     setMotivoMovimiento("");
@@ -444,7 +472,9 @@ const guardarCategoria = async () => {
     // También recargamos productos porque
     // puede haber cambiado el nombre de su categoría
     await cargarProductos();
-
+    //actualizar las tarjetas del dashboard
+    await cargarDashboard();
+   
     // Limpiar
     setNombreCategoria("");
     setCategoriaEditando(null);
@@ -489,7 +519,7 @@ const eliminarCategoria = async (id: number) => {
 
     await cargarCategorias();
     await cargarProductos();
-
+    await cargarDashboard();
   } catch (error) {
     console.error(error);
 
@@ -613,19 +643,38 @@ const eliminarCategoria = async (id: number) => {
 
         <div className="tarjeta">
           <p>Total productos</p>
-          <h2>{totalProductos}</h2>
+          <h2>{dashboard?.total_productos}</h2>
         </div>
 
         <div className="tarjeta">
           <p>Bajo stock</p>
-          <h2>{productosBajoStock}</h2>
+          <h2>{dashboard?.bajo_stock}</h2>
         </div>
 
         <div className="tarjeta">
           <p>Categorías</p>
-          <h2>{totalCategorias}</h2>
+          <h2>{dashboard?.total_categorias ?? 0}</h2>
+        </div>
+        <div className="tarjeta">
+        <p>Unidades en stock</p>
+      <h2>{dashboard?.unidades_stock ?? 0}</h2>
+      </div>
+
+        <div className="tarjeta">
+       <p>Valor del inventario</p>
+         <h2>
+        ${(dashboard?.valor_inventario ?? 0).toLocaleString("es-CL")}
+        </h2>
         </div>
 
+<div className="tarjeta">
+  <p>Entradas</p>
+  <h2>{dashboard?.total_entradas}</h2>
+</div>
+<div className="tarjeta"> 
+  <p>Salidas</p>
+  <h2>{dashboard?.total_salidas}</h2>
+</div>
       </div>
 
       {/* =========================

@@ -1,4 +1,5 @@
 import express from "express";
+import dashboardRoutes from "./routes/dashboard.routes";
 import { probarConexion } from "./database";
 import movimientosRoutes from "./routes/movimientos.routes";
 import productosRoutes from "./routes/productos.routes";
@@ -9,6 +10,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/api/productos", productosRoutes);
 app.use("/api/categorias", categoriasRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 const PORT = 3000;
 app.use("/api/movimientos", movimientosRoutes);
 app.get("/api/health", (req, res) => {
