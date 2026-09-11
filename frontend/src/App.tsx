@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
-
+import ResumenInventario from "./components/ResumenInventario";
+import type { Dashboard } from "./types/Dashboard";
+import Header from "./components/Header";
 interface Producto {
   id: number;
   nombre: string;
@@ -24,15 +26,7 @@ interface Movimiento {
   motivo: string | null;
   fecha: string;
 }
-interface Dashboard {
-  total_productos: number;
-  unidades_stock: number;
-  bajo_stock: number;
-  valor_inventario: number;
-  total_entradas: number;
-  total_salidas: number;
-  total_categorias: number;
-}
+
 
 function App() {
 
@@ -527,29 +521,16 @@ const eliminarCategoria = async (id: number) => {
   }
 };
   return (
+    
     <div className="stockflow-container">
 
       {/* =========================
           ENCABEZADO
       ========================== */}
 
-      <div className="stockflow-header">
-
-        <div>
-          <h1>StockFlow</h1>
-          <p>Gestión de Inventario</p>
-        </div>
-
-        <button
-          className="btn-nuevo"
-          onClick={alternarFormulario}
-        >
-          {mostrarFormulario
-            ? "Cerrar formulario"
-            : "+ Nuevo producto"}
-        </button>
-
-      </div>
+  <Header
+  alternarFormulario={alternarFormulario}
+/>
 
       {/* =========================
           FORMULARIO
@@ -639,43 +620,7 @@ const eliminarCategoria = async (id: number) => {
           TARJETAS RESUMEN
       ========================== */}
 
-      <div className="resumen-inventario">
-
-        <div className="tarjeta">
-          <p>Total productos</p>
-          <h2>{dashboard?.total_productos}</h2>
-        </div>
-
-        <div className="tarjeta">
-          <p>Bajo stock</p>
-          <h2>{dashboard?.bajo_stock}</h2>
-        </div>
-
-        <div className="tarjeta">
-          <p>Categorías</p>
-          <h2>{dashboard?.total_categorias ?? 0}</h2>
-        </div>
-        <div className="tarjeta">
-        <p>Unidades en stock</p>
-      <h2>{dashboard?.unidades_stock ?? 0}</h2>
-      </div>
-
-        <div className="tarjeta">
-       <p>Valor del inventario</p>
-         <h2>
-        ${(dashboard?.valor_inventario ?? 0).toLocaleString("es-CL")}
-        </h2>
-        </div>
-
-<div className="tarjeta">
-  <p>Entradas</p>
-  <h2>{dashboard?.total_entradas}</h2>
-</div>
-<div className="tarjeta"> 
-  <p>Salidas</p>
-  <h2>{dashboard?.total_salidas}</h2>
-</div>
-      </div>
+      <ResumenInventario dashboard={dashboard} />
 
       {/* =========================
           PRODUCTOS
