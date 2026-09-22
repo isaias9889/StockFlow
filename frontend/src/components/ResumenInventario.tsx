@@ -2,10 +2,12 @@ import type { Dashboard } from "../types/Dashboard";
 
 interface ResumenInventarioProps {
   dashboard: Dashboard | null;
+  onFiltrarEstado: (estado: string) => void;
 }
 
 function ResumenInventario({
   dashboard,
+  onFiltrarEstado,
 }: ResumenInventarioProps) {
 
   if (!dashboard) {
@@ -15,12 +17,26 @@ function ResumenInventario({
   return (
     <div className="resumen-inventario">
 
-      <div className="tarjeta">
+      <div
+        className="tarjeta tarjeta-clickable"
+        onClick={() => onFiltrarEstado("")}
+      >
         <p>Total productos</p>
         <h2>{dashboard.total_productos}</h2>
       </div>
 
-      <div className="tarjeta">
+      <div
+        className="tarjeta tarjeta-clickable"
+        onClick={() => onFiltrarEstado("Sin stock")}
+      >
+        <p>Sin stock</p>
+        <h2>{dashboard.sin_stock}</h2>
+      </div>
+
+      <div
+        className="tarjeta tarjeta-clickable"
+        onClick={() => onFiltrarEstado("Bajo stock")}
+      >
         <p>Bajo stock</p>
         <h2>{dashboard.bajo_stock}</h2>
       </div>

@@ -9,7 +9,8 @@ export const obtenerDashboard = async (
       SELECT
     COUNT(*) AS total_productos,
     COALESCE(SUM(stock), 0) AS unidades_stock,
-    COALESCE(SUM(CASE WHEN stock <= 10 THEN 1 ELSE 0 END), 0) AS bajo_stock,
+    COALESCE(SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END), 0) AS sin_stock,
+    COALESCE(SUM(CASE WHEN stock > 0 AND stock <= 10 THEN 1 ELSE 0 END), 0) AS bajo_stock,
     COALESCE(SUM(precio * stock), 0) AS valor_inventario
   FROM productos
     `);
@@ -36,6 +37,7 @@ const [categorias]: any = await pool.query(`
         total_categorias: Number(categorias[0].total_categorias),
    total_productos: Number(resultado[0].total_productos),
   unidades_stock: Number(resultado[0].unidades_stock),
+  sin_stock: Number(resultado[0].sin_stock),
   bajo_stock: Number(resultado[0].bajo_stock),
   valor_inventario: Number(resultado[0].valor_inventario),
 

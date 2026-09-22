@@ -11,6 +11,9 @@ interface Producto {
   categoria: string;
 }
 
+type CampoOrden = "nombre" | "precio" | "stock";
+type DireccionOrden = "asc" | "desc";
+
 interface Categoria {
   id: number;
   nombre: string;
@@ -26,7 +29,29 @@ interface Movimiento {
   motivo: string | null;
   fecha: string;
 }
+function obtenerEstadoStock(stock: number): string {
+  if (stock === 0) {
+    return "Sin stock";
+  }
 
+  if (stock <= 10) {
+    return "Bajo stock";
+  }
+
+  return "Disponible";
+}
+
+function obtenerClaseEstado(stock: number): string {
+  if (stock === 0) {
+    return "estado sin-stock";
+  }
+
+  if (stock <= 10) {
+    return "estado bajo-stock";
+  }
+
+  return "estado disponible";
+}
 
 function App() {
 
@@ -38,7 +63,6 @@ function App() {
   // =========================
   // PRODUCTOS Y CATEGORÍAS
   // =========================
-
   const [productos, setProductos] = useState<Producto[]>([]);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -77,6 +101,9 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
 
   const [busqueda, setBusqueda] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
+  const [estadoFiltro, setEstadoFiltro] = useState("");
+  const [campoOrden, setCampoOrden] = useState<CampoOrden>("nombre");
+  const [direccionOrden, setDireccionOrden] = useState<DireccionOrden>("asc");
 
   const productosFiltrados = productos.filter((producto) => {
     const coincideBusqueda = producto.nombre
@@ -87,8 +114,35 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
       categoriaFiltro === "" ||
       producto.categoria_id === Number(categoriaFiltro);
 
-    return coincideBusqueda && coincideCategoria;
+    const coincideEstado =
+      estadoFiltro === "" ||
+      obtenerEstadoStock(producto.stock) === estadoFiltro;
+
+    return coincideBusqueda && coincideCategoria && coincideEstado;
   });
+
+  const productosMostrados = [...productosFiltrados].sort((a, b) => {
+    let resultado = 0;
+
+    if (campoOrden === "nombre") {
+      resultado = a.nombre.localeCompare(b.nombre, "es");
+    } else if (campoOrden === "precio") {
+      resultado = Number(a.precio) - Number(b.precio);
+    } else {
+      resultado = a.stock - b.stock;
+    }
+
+    return direccionOrden === "asc" ? resultado : -resultado;
+  });
+
+  const ordenarPor = (campo: CampoOrden) => {
+    if (campoOrden === campo) {
+      setDireccionOrden(direccionOrden === "asc" ? "desc" : "asc");
+    } else {
+      setCampoOrden(campo);
+      setDireccionOrden("asc");
+    }
+  };
   // =========================
   // CARGAR DASHBOARD
   // =========================
@@ -620,7 +674,10 @@ const eliminarCategoria = async (id: number) => {
           TARJETAS RESUMEN
       ========================== */}
 
-      <ResumenInventario dashboard={dashboard} />
+      <ResumenInventario
+        dashboard={dashboard}
+        onFiltrarEstado={setEstadoFiltro}
+      />
 
       {/* =========================
           PRODUCTOS
@@ -667,6 +724,19 @@ const eliminarCategoria = async (id: number) => {
 
           </select>
 
+          <select
+            className="filtro-categoria"
+            value={estadoFiltro}
+            onChange={(e) =>
+              setEstadoFiltro(e.target.value)
+            }
+          >
+            <option value="">Todos los estados</option>
+            <option value="Sin stock">Sin stock</option>
+            <option value="Bajo stock">Bajo stock</option>
+            <option value="Disponible">Disponible</option>
+          </select>
+
         </div>
 
         {/* TABLA */}
@@ -677,10 +747,25 @@ const eliminarCategoria = async (id: number) => {
 
             <tr>
               <th>ID</th>
-              <th>Producto</th>
+              <th
+                className="columna-orden"
+                onClick={() => ordenarPor("nombre")}
+              >
+                Producto {campoOrden === "nombre" ? (direccionOrden === "asc" ? "↑" : "↓") : ""}
+              </th>
               <th>Categoría</th>
-              <th>Precio</th>
-              <th>Stock</th>
+              <th
+                className="columna-orden"
+                onClick={() => ordenarPor("precio")}
+              >
+                Precio {campoOrden === "precio" ? (direccionOrden === "asc" ? "↑" : "↓") : ""}
+              </th>
+              <th
+                className="columna-orden"
+                onClick={() => ordenarPor("stock")}
+              >
+                Stock {campoOrden === "stock" ? (direccionOrden === "asc" ? "↑" : "↓") : ""}
+              </th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -689,7 +774,7 @@ const eliminarCategoria = async (id: number) => {
 
           <tbody>
 
-            {productosFiltrados.map((producto) => (
+            {productosMostrados.map((producto) => (
 
               <tr key={producto.id}>
 
@@ -715,20 +800,9 @@ const eliminarCategoria = async (id: number) => {
 
                 <td>
 
-                  <span
-                    className={
-                      producto.stock <= 10
-                        ? "estado bajo-stock"
-                        : "estado disponible"
-                    }
-                  >
-
-                    {producto.stock <= 10
-                      ? "Bajo stock"
-                      : "Disponible"}
-
-                  </span>
-
+                <span className={obtenerClaseEstado(producto.stock)}>
+  {obtenerEstadoStock(producto.stock)}
+</span>
                 </td>
 
                 <td>
