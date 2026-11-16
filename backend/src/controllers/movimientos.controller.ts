@@ -5,6 +5,7 @@ export const registrarMovimiento = async (
   req: Request,
   res: Response
 ) => {
+  let conexion;
   try {
     const {
       producto_id,
@@ -15,35 +16,41 @@ export const registrarMovimiento = async (
      // Validar datos obligatorios
 if (!producto_id || !tipo || cantidad === undefined) {
   return res.status(400).json({
-    mensaje: "Faltan datos obligatorios"
+    message: "Faltan datos obligatorios"
   });
 }
 
 // Validar tipo
 if (tipo !== "ENTRADA" && tipo !== "SALIDA") {
   return res.status(400).json({
-    mensaje: "El tipo debe ser ENTRADA o SALIDA"
+    message: "El tipo debe ser ENTRADA o SALIDA"
   });
 }
 
 // Validar cantidad
 if (
   typeof cantidad !== "number" ||
-  cantidad <= 0
+  !Number.isSafeInteger(cantidad) || cantidad <= 0 || cantidad > 2147483647
 ) {
   return res.status(400).json({
-    mensaje: "La cantidad debe ser mayor a 0"
+    message: "La cantidad debe ser mayor a 0"
   });
 }
+    if (!Number.isSafeInteger(producto_id) || producto_id <= 0 || (motivo != null && (typeof motivo !== "string" || motivo.length > 255))) {
+      return res.status(400).json({ message: "Producto o motivo inválido" });
+    }
+    conexion = await pool.getConnection();
+    await conexion.beginTransaction();
     // 1. Buscar el producto
-    const [productos]: any = await pool.query(
-      "SELECT * FROM productos WHERE id = ?",
+    const [productos]: any = await conexion.query(
+      "SELECT * FROM productos WHERE id = ? FOR UPDATE",
       [producto_id]
     );
 
     if (productos.length === 0) {
+      await conexion.rollback();
       return res.status(404).json({
-        mensaje: "Producto no encontrado"
+        message: "Producto no encontrado"
       });
     }
 
@@ -63,20 +70,21 @@ if (
     }
 
     // 3. Evitar stock negativo
-    if (stockNuevo < 0) {
+    if (stockNuevo < 0 || stockNuevo > 2147483647) {
+      await conexion.rollback();
       return res.status(400).json({
-        mensaje: "No hay stock suficiente"
+        message: "No hay stock suficiente"
       });
     }
 
     // 4. Actualizar stock del producto
-    await pool.query(
+    await conexion.query(
       "UPDATE productos SET stock = ? WHERE id = ?",
       [stockNuevo, producto_id]
     );
 
     // 5. Guardar el movimiento
-    await pool.query(
+    await conexion.query(
       `
       INSERT INTO movimientos_inventario
       (
@@ -95,24 +103,29 @@ if (
         cantidad,
         stockAnterior,
         stockNuevo,
-        motivo
+        motivo ?? null
       ]
     );
 
+    await conexion.commit();
     return res.status(201).json({
-      mensaje: "Movimiento registrado correctamente",
+      message: "Movimiento registrado correctamente",
       stock_anterior: stockAnterior,
       stock_nuevo: stockNuevo
     });
 
   } catch (error) {
+    if (conexion) await conexion.rollback();
     console.error(error);
 
     return res.status(500).json({
-      mensaje: "Error al registrar movimiento"
+      message: "Error al registrar movimiento"
     });
+  } finally {
+    conexion?.release();
   }
-};export const listarMovimientos = async (
+};
+export const listarMovimientos = async (
   req: Request,
   res: Response
 ) => {
@@ -140,7 +153,7 @@ if (
     console.error(error);
 
     return res.status(500).json({
-      mensaje: "Error al obtener los movimientos"
+      message: "Error al obtener los movimientos"
     });
   }
 };

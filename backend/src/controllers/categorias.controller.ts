@@ -135,7 +135,7 @@ export async function eliminarCategoria(
  
  if (error.code === "ER_ROW_IS_REFERENCED_2") {
     return res.status(409).json({
-      mensaje: "No se puede eliminar la categoría porque tiene productos asociados"
+      message: "No se puede eliminar la categoría porque tiene productos asociados"
     });
   }
   return res.status(500).json({

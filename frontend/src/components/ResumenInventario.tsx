@@ -3,15 +3,27 @@ import type { Dashboard } from "../types/Dashboard";
 interface ResumenInventarioProps {
   dashboard: Dashboard | null;
   onFiltrarEstado: (estado: string) => void;
+  cargando: boolean;
+  error: string | null;
 }
 
 function ResumenInventario({
   dashboard,
   onFiltrarEstado,
+  cargando,
+  error,
 }: ResumenInventarioProps) {
 
-  if (!dashboard) {
+  if (cargando) {
     return <p>Cargando resumen...</p>;
+  }
+
+  if (error) {
+    return <p className="mensaje-error">{error}</p>;
+  }
+
+  if (!dashboard) {
+    return null;
   }
 
   return (
@@ -51,7 +63,7 @@ function ResumenInventario({
         <h2>{dashboard.unidades_stock}</h2>
       </div>
 
-      <div className="tarjeta">
+      <div className="tarjeta tarjeta-valor">
         <p>Valor del inventario</p>
         <h2>
           ${dashboard.valor_inventario.toLocaleString("es-CL")}

@@ -2,6 +2,15 @@ import { useEffect, useState, type FormEvent } from "react";
 import ResumenInventario from "./components/ResumenInventario";
 import type { Dashboard } from "./types/Dashboard";
 import Header from "./components/Header";
+import { descargarCsv } from "./utils/csv";
+import { API_URL } from "./config";
+import { mensajeDeApi } from "./utils/api";
+import { obtenerClaseEstado, obtenerEstadoStock } from "./utils/stock";
+import {
+  validarCantidadMovimiento,
+  validarDatosProducto,
+  validarNombreCategoria,
+} from "./utils/validaciones";
 interface Producto {
   id: number;
   nombre: string;
@@ -29,29 +38,6 @@ interface Movimiento {
   motivo: string | null;
   fecha: string;
 }
-function obtenerEstadoStock(stock: number): string {
-  if (stock === 0) {
-    return "Sin stock";
-  }
-
-  if (stock <= 10) {
-    return "Bajo stock";
-  }
-
-  return "Disponible";
-}
-
-function obtenerClaseEstado(stock: number): string {
-  if (stock === 0) {
-    return "estado sin-stock";
-  }
-
-  if (stock <= 10) {
-    return "estado bajo-stock";
-  }
-
-  return "estado disponible";
-}
 
 function App() {
 
@@ -60,17 +46,30 @@ function App() {
 // =========================
 
   const [dashboard, setDashboard] = useState<Dashboard|null>(null);
+  const [cargandoDashboard, setCargandoDashboard] = useState(true);
+  const [errorDashboard, setErrorDashboard] = useState<string | null>(null);
   // =========================
   // PRODUCTOS Y CATEGORÍAS
   // =========================
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [cargandoProductos, setCargandoProductos] = useState(true);
+  const [errorProductos, setErrorProductos] = useState<string | null>(null);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [errorCategorias, setErrorCategorias] = useState<string | null>(null);
+  const [errorMovimientos, setErrorMovimientos] = useState<string | null>(null);
+  const [errorFormulario, setErrorFormulario] = useState<string | null>(null);
+  const [errorMovimiento, setErrorMovimiento] = useState<string | null>(null);
+  const [errorCategoria, setErrorCategoria] = useState<string | null>(null);
+  const [errorAccion, setErrorAccion] = useState<string | null>(null);
+  const [guardandoProducto, setGuardandoProducto] = useState(false);
   const [mostrarMovimiento, setMostrarMovimiento] = useState(false);
 const [tipoFiltroMovimiento, setTipoFiltroMovimiento] = useState("");
 const [productoFiltroMovimiento, setProductoFiltroMovimiento] = useState("");
 const [productoMovimiento, setProductoMovimiento] =
   useState<Producto | null>(null);
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
   const [nombreCategoria, setNombreCategoria] = useState("");
   const [categoriaEditando, setCategoriaEditando] =
   useState<number | null>(null);
@@ -122,7 +121,7 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
   });
 
   const productosMostrados = [...productosFiltrados].sort((a, b) => {
-    let resultado = 0;
+    let resultado: number;
 
     if (campoOrden === "nombre") {
       resultado = a.nombre.localeCompare(b.nombre, "es");
@@ -148,25 +147,41 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
   // =========================
   
   const cargarDashboard = async () => {
+    setCargandoDashboard(true);
+    setErrorDashboard(null);
+
     try {
       const respuesta = await fetch(
-        "http://localhost:3000/api/dashboard"
+        `${API_URL}/api/dashboard`
       );
+
+      if (!respuesta.ok) {
+        throw new Error("No se pudo cargar el dashboard");
+      }
+
       const datos = await respuesta.json();
       setDashboard(datos);
     } catch (error) {
       console.error("Error cargando dashboard:", error);
+      setErrorDashboard(
+        "No se pudo cargar el resumen del inventario"
+      );
+    } finally {
+      setCargandoDashboard(false);
     }
-  }
+  };
 
   // =========================
   // CARGAR PRODUCTOS
   // =========================
 
   const cargarProductos = async () => {
+    setCargandoProductos(true);
+    setErrorProductos(null);
+
     try {
       const respuesta = await fetch(
-        "http://localhost:3000/api/productos"
+        `${API_URL}/api/productos`
       );
 
       if (!respuesta.ok) {
@@ -178,6 +193,9 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
       setProductos(datos);
     } catch (error) {
       console.error("Error cargando productos:", error);
+      setErrorProductos("No se pudieron cargar los productos");
+    } finally {
+      setCargandoProductos(false);
     }
   };
 
@@ -186,9 +204,11 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
   // =========================
 
   const cargarCategorias = async () => {
+    setErrorCategorias(null);
+
     try {
       const respuesta = await fetch(
-        "http://localhost:3000/api/categorias"
+        `${API_URL}/api/categorias`
       );
 
       if (!respuesta.ok) {
@@ -200,12 +220,15 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
       setCategorias(datos);
     } catch (error) {
       console.error("Error cargando categorías:", error);
+      setErrorCategorias("No se pudieron cargar las categorías");
     }
   };
    const cargarMovimientos = async () => {
+  setErrorMovimientos(null);
+
   try {
     const respuesta = await fetch(
-      "http://localhost:3000/api/movimientos"
+      `${API_URL}/api/movimientos`
     );
 
     if (!respuesta.ok) {
@@ -217,6 +240,7 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
     setMovimientos(datos);
   } catch (error) {
     console.error("Error cargando movimientos:", error);
+    setErrorMovimientos("No se pudo cargar el historial de movimientos");
   }
 };
 
@@ -225,10 +249,29 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
   // =========================
 
   useEffect(() => {
-    cargarProductos();
-    cargarCategorias();
-    cargarMovimientos();
-    cargarDashboard();
+    const controller = new AbortController();
+    async function cargarInicial<T>(
+      ruta: string,
+      actualizar: (datos: T) => void,
+      mostrarError: (mensaje: string) => void,
+      terminar?: () => void
+    ) {
+      try {
+        const respuesta = await fetch(`${API_URL}/api/${ruta}`, { signal: controller.signal });
+        if (!respuesta.ok) throw new Error(`No se pudo cargar ${ruta}`);
+        const datos: T = await respuesta.json();
+        if (!controller.signal.aborted) actualizar(datos);
+      } catch {
+        if (!controller.signal.aborted) mostrarError(`No se pudo cargar ${ruta}`);
+      } finally {
+        if (!controller.signal.aborted) terminar?.();
+      }
+    }
+    void cargarInicial<Producto[]>("productos", setProductos, setErrorProductos, () => setCargandoProductos(false));
+    void cargarInicial<Categoria[]>("categorias", setCategorias, setErrorCategorias);
+    void cargarInicial<Movimiento[]>("movimientos", setMovimientos, setErrorMovimientos);
+    void cargarInicial<Dashboard>("dashboard", setDashboard, setErrorDashboard, () => setCargandoDashboard(false));
+    return () => controller.abort();
   }, []);
 
   // =========================
@@ -248,6 +291,7 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
     setStock("");
     setCategoriaId("");
     setProductoEditando(null);
+    setErrorFormulario(null);
   };
 
   // =========================
@@ -286,67 +330,69 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
   const guardarProducto = async (e: FormEvent) => {
     e.preventDefault();
 
+    const validacion = validarDatosProducto(
+      nombre,
+      precio,
+      stock,
+      categoriaId
+    );
+
+    if (validacion) {
+      setErrorFormulario(validacion);
+      return;
+    }
+
     const datosProducto = {
-      nombre: nombre,
+      nombre: nombre.trim(),
       precio: Number(precio),
       stock: Number(stock),
       categoria_id: Number(categoriaId),
     };
 
+    setGuardandoProducto(true);
+    setErrorFormulario(null);
+
     try {
-      // CREAR PRODUCTO
-      if (productoEditando === null) {
-        const respuesta = await fetch(
-          "http://localhost:3000/api/productos",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type": "application/json",
-            },
-
-            body: JSON.stringify(datosProducto),
-          }
-        );
-
-        if (!respuesta.ok) {
-          throw new Error("No se pudo crear el producto");
+      const esNuevo = productoEditando === null;
+      const respuesta = await fetch(
+        esNuevo
+          ? `${API_URL}/api/productos`
+          : `${API_URL}/api/productos/${productoEditando}`,
+        {
+          method: esNuevo ? "POST" : "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(datosProducto),
         }
-      }
+      );
 
-      // EDITAR PRODUCTO
-      else {
-        const respuesta = await fetch(
-          `http://localhost:3000/api/productos/${productoEditando}`,
-          {
-            method: "PUT",
+      const datos = await respuesta.json().catch(() => null);
 
-            headers: {
-              "Content-Type": "application/json",
-            },
-
-            body: JSON.stringify(datosProducto),
-          }
+      if (!respuesta.ok) {
+        throw new Error(
+          mensajeDeApi(
+            datos,
+            esNuevo
+              ? "No se pudo crear el producto"
+              : "No se pudo actualizar el producto"
+          )
         );
-
-        if (!respuesta.ok) {
-          throw new Error("No se pudo actualizar el producto");
-        }
       }
 
       await cargarProductos();
       await cargarDashboard();
       limpiarFormulario();
-
       setMostrarFormulario(false);
     } catch (error) {
       console.error(error);
-
-      alert(
-        productoEditando === null
-          ? "Ocurrió un error al crear el producto"
-          : "Ocurrió un error al actualizar el producto"
+      setErrorFormulario(
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error al guardar el producto"
       );
+    } finally {
+      setGuardandoProducto(false);
     }
   };
 
@@ -365,16 +411,22 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3000/api/productos/${id}`,
+        `${API_URL}/api/productos/${id}`,
         {
           method: "DELETE",
         }
       );
 
+      const datos = await respuesta.json().catch(() => null);
+
       if (!respuesta.ok) {
-        throw new Error("No se pudo eliminar el producto");
+        setErrorAccion(
+          mensajeDeApi(datos, "No se pudo eliminar el producto")
+        );
+        return;
       }
 
+      setErrorAccion(null);
       setProductos((productosActuales) =>
         productosActuales.filter(
           (producto) => producto.id !== id
@@ -383,8 +435,7 @@ const [motivoMovimiento, setMotivoMovimiento] = useState("");
       await cargarDashboard();
     } catch (error) {
       console.error(error);
-
-      alert("Ocurrió un error al eliminar el producto");
+      setErrorAccion("Ocurrió un error al eliminar el producto");
     }
   };
 const abrirMovimiento = (
@@ -396,6 +447,7 @@ const abrirMovimiento = (
 
   setCantidadMovimiento("");
   setMotivoMovimiento("");
+  setErrorMovimiento(null);
 
   setMostrarMovimiento(true);
 };
@@ -404,11 +456,14 @@ const registrarMovimiento = async () => {
     return;
   }
 
-  if (
-    cantidadMovimiento === "" ||
-    Number(cantidadMovimiento) <= 0
-  ) {
-    alert("Ingresa una cantidad válida");
+  const validacion = validarCantidadMovimiento(
+    cantidadMovimiento,
+    tipoMovimiento,
+    productoMovimiento.stock
+  );
+
+  if (validacion) {
+    setErrorMovimiento(validacion);
     return;
   }
 
@@ -421,7 +476,7 @@ const registrarMovimiento = async () => {
 
   try {
     const respuesta = await fetch(
-      "http://localhost:3000/api/movimientos",
+      `${API_URL}/api/movimientos`,
       {
         method: "POST",
 
@@ -433,10 +488,12 @@ const registrarMovimiento = async () => {
       }
     );
 
-    const datos = await respuesta.json();
+    const datos = await respuesta.json().catch(() => null);
 
     if (!respuesta.ok) {
-      alert(datos.mensaje);
+      setErrorMovimiento(
+        mensajeDeApi(datos, "Ocurrió un error al registrar el movimiento")
+      );
       return;
     }
 
@@ -446,13 +503,13 @@ const registrarMovimiento = async () => {
 
     setCantidadMovimiento("");
     setMotivoMovimiento("");
+    setErrorMovimiento(null);
     setProductoMovimiento(null);
     setMostrarMovimiento(false);
 
   } catch (error) {
     console.error(error);
-
-    alert("Ocurrió un error al registrar el movimiento");
+    setErrorMovimiento("Ocurrió un error al registrar el movimiento");
   }
 };
 const movimientosFiltrados = movimientos.filter((movimiento) => {
@@ -464,11 +521,13 @@ const movimientosFiltrados = movimientos.filter((movimiento) => {
     productoFiltroMovimiento === "" ||
     movimiento.producto_id === Number(productoFiltroMovimiento);
 
-  return coincideTipo && coincideProducto;
+  const fecha = new Date(movimiento.fecha);
+  return coincideTipo && coincideProducto && (!fechaDesde || fecha >= new Date(`${fechaDesde}T00:00:00`)) && (!fechaHasta || fecha <= new Date(`${fechaHasta}T23:59:59.999`));
 });
 const guardarCategoria = async () => {
-  if (nombreCategoria.trim() === "") {
-    alert("Ingresa un nombre para la categoría");
+  const validacion = validarNombreCategoria(nombreCategoria);
+  setErrorCategoria(validacion);
+  if (validacion) {
     return;
   }
 
@@ -478,7 +537,7 @@ const guardarCategoria = async () => {
     // Si NO estamos editando → crear
     if (categoriaEditando === null) {
       respuesta = await fetch(
-        "http://localhost:3000/api/categorias",
+        `${API_URL}/api/categorias`,
         {
           method: "POST",
           headers: {
@@ -494,7 +553,7 @@ const guardarCategoria = async () => {
     // Si estamos editando → actualizar
     else {
       respuesta = await fetch(
-        `http://localhost:3000/api/categorias/${categoriaEditando}`,
+        `${API_URL}/api/categorias/${categoriaEditando}`,
         {
           method: "PUT",
           headers: {
@@ -510,7 +569,7 @@ const guardarCategoria = async () => {
     const datos = await respuesta.json();
 
     if (!respuesta.ok) {
-      alert(datos.mensaje);
+      setErrorCategoria(mensajeDeApi(datos, "No se pudo guardar la categoría"));
       return;
     }
 
@@ -530,7 +589,7 @@ const guardarCategoria = async () => {
   } catch (error) {
     console.error(error);
 
-    alert("Ocurrió un error al guardar la categoría");
+    setErrorCategoria("Ocurrió un error al guardar la categoría");
   }
 };
 const editarCategoria = (categoria: Categoria) => {
@@ -548,7 +607,7 @@ const eliminarCategoria = async (id: number) => {
 
   try {
     const respuesta = await fetch(
-      `http://localhost:3000/api/categorias/${id}`,
+      `${API_URL}/api/categorias/${id}`,
       {
         method: "DELETE",
       }
@@ -557,11 +616,7 @@ const eliminarCategoria = async (id: number) => {
     const datos = await respuesta.json();
 
    if (!respuesta.ok) {
-  alert(
-    datos.mensaje ||
-    datos.error ||
-    "No se pudo eliminar la categoría"
-  );
+  setErrorCategoria(mensajeDeApi(datos, "No se pudo eliminar la categoría"));
   return;
 }
 
@@ -571,7 +626,7 @@ const eliminarCategoria = async (id: number) => {
   } catch (error) {
     console.error(error);
 
-    alert("Ocurrió un error al eliminar la categoría");
+    setErrorCategoria("Ocurrió un error al eliminar la categoría");
   }
 };
   return (
@@ -602,6 +657,7 @@ const eliminarCategoria = async (id: number) => {
               ? "Nuevo producto"
               : "Editar producto"}
           </h2>
+          {errorFormulario && <p role="alert" className="mensaje-error">{errorFormulario}</p>}
 
           <input
             type="text"
@@ -615,6 +671,7 @@ const eliminarCategoria = async (id: number) => {
 
           <input
             type="number"
+            step="0.01"
             placeholder="Precio"
             value={precio}
             onChange={(e) =>
@@ -659,6 +716,7 @@ const eliminarCategoria = async (id: number) => {
 
           <button
             type="submit"
+            disabled={guardandoProducto}
             className="btn-guardar"
           >
             {productoEditando === null
@@ -677,6 +735,8 @@ const eliminarCategoria = async (id: number) => {
       <ResumenInventario
         dashboard={dashboard}
         onFiltrarEstado={setEstadoFiltro}
+        cargando={cargandoDashboard}
+        error={errorDashboard}
       />
 
       {/* =========================
@@ -686,6 +746,8 @@ const eliminarCategoria = async (id: number) => {
       <div className="tabla-contenedor">
 
         <h2>Productos</h2>
+        {errorAccion && <p role="alert" className="mensaje-error">{errorAccion}</p>}
+        <button type="button" disabled={!productosMostrados.length} onClick={() => descargarCsv("productos.csv", [["ID", "Producto", "Categoría", "Precio", "Stock", "Estado"], ...productosMostrados.map(p => [p.id, p.nombre, p.categoria, p.precio, p.stock, obtenerEstadoStock(p.stock)])])}>Exportar productos CSV</button>
 
         {/* BUSCADOR Y FILTRO */}
 
@@ -854,15 +916,33 @@ const eliminarCategoria = async (id: number) => {
         
         {/* MENSAJE SI NO HAY RESULTADOS */}
 
-        {productosFiltrados.length === 0 && (
-          <p>No se encontraron productos.</p>
+        {cargandoProductos && (
+          <p>Cargando productos...</p>
         )}
+
+        {errorProductos && (
+          <p className="mensaje-error">{errorProductos}</p>
+        )}
+
+        {!cargandoProductos &&
+          !errorProductos &&
+          productos.length === 0 && (
+            <p>No hay productos.</p>
+          )}
+
+        {!cargandoProductos &&
+          !errorProductos &&
+          productos.length > 0 &&
+          productosFiltrados.length === 0 && (
+            <p>No se encontraron productos.</p>
+          )}
 
       </div>
 {mostrarMovimiento && productoMovimiento && (
 
   <div className="form-movimiento">
 
+    {errorMovimiento && <p role="alert" className="mensaje-error">{errorMovimiento}</p>}
     <h2>
       {tipoMovimiento === "ENTRADA"
         ? "Registrar entrada"
@@ -919,6 +999,14 @@ const eliminarCategoria = async (id: number) => {
       <div className="historial-contenedor">
 
         <h2>Historial de movimientos</h2>
+        {errorMovimientos && <p role="alert" className="mensaje-error">{errorMovimientos}</p>}
+        {!errorMovimientos && movimientosFiltrados.length === 0 && <p>No hay movimientos para los filtros seleccionados.</p>}
+        <button type="button" disabled={!movimientosFiltrados.length} onClick={() => descargarCsv("movimientos.csv", [["Producto", "Tipo", "Cantidad", "Stock anterior", "Stock nuevo", "Motivo", "Fecha"], ...movimientosFiltrados.map(m => [m.producto, m.tipo, m.cantidad, m.stock_anterior, m.stock_nuevo, m.motivo, m.fecha])])}>Exportar movimientos CSV</button>
+        <div className="filtros-movimientos">
+          <label>Desde <input type="date" value={fechaDesde} max={fechaHasta || undefined} onChange={e => setFechaDesde(e.target.value)} /></label>
+          <label>Hasta <input type="date" value={fechaHasta} min={fechaDesde || undefined} onChange={e => setFechaHasta(e.target.value)} /></label>
+          <button type="button" onClick={() => { setFechaDesde(""); setFechaHasta(""); setTipoFiltroMovimiento(""); setProductoFiltroMovimiento(""); }}>Limpiar filtros</button>
+        </div>
         <div className="filtros-movimientos">
 
   <select
@@ -1012,6 +1100,8 @@ const eliminarCategoria = async (id: number) => {
 <div className="categorias-contenedor">
 
   <h2>Gestión de categorías</h2>
+  {(errorCategorias || errorCategoria) && <p role="alert" className="mensaje-error">{errorCategoria || errorCategorias}</p>}
+  {!errorCategorias && categorias.length === 0 && <p>Crea una categoría para agregar productos.</p>}
   
 <div className="form-categoria">
 

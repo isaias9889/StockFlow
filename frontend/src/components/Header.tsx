@@ -4,10 +4,17 @@ interface HeaderProps {
 
 function Header({ alternarFormulario }: HeaderProps) {
   return (
-    <header>
-      <h1>StockFlow — Gestión de Inventario</h1>
+    <header className="stockflow-header">
+      <div>
+        <h1>StockFlow — Gestión de Inventario</h1>
+        <p>Stock, movimientos y categorías en un solo panel</p>
+      </div>
 
-      <button onClick={alternarFormulario}>
+      <button
+        type="button"
+        className="btn-nuevo"
+        onClick={alternarFormulario}
+      >
         + Nuevo producto
       </button>
     </header>

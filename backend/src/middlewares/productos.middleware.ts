@@ -8,13 +8,13 @@ export function validarProducto(
   next: NextFunction
 ) {
  const { nombre, precio, stock, categoria_id } = req.body;
-  if (typeof nombre !== "string" || nombre.trim() === "") {
+  if (typeof nombre !== "string" || nombre.trim() === "" || nombre.trim().length > 150) {
     return res.status(400).json({
       message: "El nombre es obligatorio"
     });
   }
 
-  if (typeof precio !== "number") {
+  if (typeof precio !== "number" || !Number.isFinite(precio) || precio > 99999999.99) {
   return res.status(400).json({
     message: "El precio debe ser un número"
   });
@@ -26,12 +26,12 @@ if (precio < 0) {
   });
 }
 
-if (typeof stock !== "number") {
+if (typeof stock !== "number" || !Number.isSafeInteger(stock) || stock > 2147483647) {
   return res.status(400).json({
-    message: "El stock debe ser un número"
+    message: "El stock debe ser un número entero"
   });
 }
-;
+
 if (stock < 0) {
   return res.status(400).json({
     message: "El stock no puede ser negativo"

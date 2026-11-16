@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import { pool } from "../database";
+
+const LIMITE_BAJO_STOCK = 10;
+
 export const obtenerDashboard = async (
   req: Request,
   res: Response
@@ -10,7 +13,7 @@ export const obtenerDashboard = async (
     COUNT(*) AS total_productos,
     COALESCE(SUM(stock), 0) AS unidades_stock,
     COALESCE(SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END), 0) AS sin_stock,
-    COALESCE(SUM(CASE WHEN stock > 0 AND stock <= 10 THEN 1 ELSE 0 END), 0) AS bajo_stock,
+    COALESCE(SUM(CASE WHEN stock > 0 AND stock <= ${LIMITE_BAJO_STOCK} THEN 1 ELSE 0 END), 0) AS bajo_stock,
     COALESCE(SUM(precio * stock), 0) AS valor_inventario
   FROM productos
     `);
@@ -50,7 +53,7 @@ const [categorias]: any = await pool.query(`
     console.error("Error al obtener dashboard:", error);
 
     return res.status(500).json({
-      mensaje: "Error interno del servidor"
+      message: "Error interno del servidor"
     });
   }
 };

@@ -162,8 +162,19 @@ export async function eliminarProducto(
       id
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error al eliminar producto:", error);
+
+    const codigo =
+      error && typeof error === "object" && "code" in error
+        ? String(error.code)
+        : "";
+
+    if (codigo === "ER_ROW_IS_REFERENCED_2") {
+      return res.status(409).json({
+        message: "No se puede eliminar el producto porque tiene movimientos asociados"
+      });
+    }
 
     return res.status(500).json({
       message: "Error interno del servidor"
